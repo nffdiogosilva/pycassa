@@ -7,7 +7,6 @@ manipulation of data inside Cassandra.
 
 import time
 import struct
-from UserDict import DictMixin
 
 from pycassa.cassandra.ttypes import Column, ColumnOrSuperColumn,\
     ColumnParent, ColumnPath, ConsistencyLevel, NotFoundException,\
@@ -23,7 +22,7 @@ except ImportError:
 
 __all__ = ['gm_timestamp', 'ColumnFamily', 'PooledColumnFamily']
 
-class ColumnValidatorDict(DictMixin):
+class ColumnValidatorDict(dict):
 
     def __init__(self, other_dict={}, name_packer=None, name_unpacker=None):
         self.name_packer = name_packer or (lambda x: x)
@@ -473,6 +472,8 @@ class ColumnFamily(object):
     def _unpack_value(self, value, col_name):
         if not self.autopack_values:
             return value
+
+        col_name = col_name.encode()
         unpacker = self._column_validators.unpackers.get(col_name, self._default_value_unpacker)
         try:
             return unpacker(value)

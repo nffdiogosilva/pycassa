@@ -8,6 +8,7 @@ import struct
 import calendar
 from datetime import datetime
 from decimal import Decimal
+import binascii
 
 import pycassa.util as util
 
@@ -321,6 +322,7 @@ def packer_for(typestr):
         return pack_bytes
 
 def unpacker_for(typestr):
+
     if typestr is None:
         return lambda v: v
 
@@ -343,7 +345,7 @@ def unpacker_for(typestr):
                 _long_packer.unpack(v)[0] / 1e3)
 
     elif data_type == 'BooleanType':
-        return lambda v: bool(_bool_packer.unpack(v)[0])
+        return lambda v: bool(_bool_packer.unpack(v.encode())[0])
 
     elif data_type == 'DoubleType':
         return lambda v: _double_packer.unpack(v)[0]
@@ -353,7 +355,7 @@ def unpacker_for(typestr):
 
     elif data_type == 'DecimalType':
         def unpack_decimal(v):
-            scale = _int_packer.unpack(v[:4])[0]
+            scale = _int_packer.unpack(v[:4].encode())[0]
             unscaled = decode_int(v[4:])
             return Decimal('%de%d' % (unscaled, -scale))
         return unpack_decimal
@@ -368,7 +370,7 @@ def unpacker_for(typestr):
         return decode_int
 
     elif data_type == 'UTF8Type':
-        return lambda v: v.decode('utf-8')
+        return lambda v: v
 
     elif 'UUIDType' in data_type:
         return lambda v: uuid.UUID(bytes=v)
@@ -396,11 +398,11 @@ def encode_int(x, *args):
         else:
             out.append(struct.pack('>H', 0xffff & ~x))
 
-    return ''.join(reversed(out))
+    return ''.join(reversed([o.decode() for o in out]))
 
 def decode_int(term, *args):
     if term != "":
-        val = int(term.encode('hex'), 16)
+        val = int(binascii.hexlify(term.encode()), 16)
         if (ord(term[0]) & 128) != 0:
             val = val - (1 << (len(term) * 8))
         return val
